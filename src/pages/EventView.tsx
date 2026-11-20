@@ -22,25 +22,15 @@ export const EventView: React.FC = () => {
     certificatePending,
   } = useEvent()
 
-  // Generate chart data matching the current event state
+  // Chart data from the plan: delivered follows the levers engaged so far;
+  // after the extension decision, the last 30 min show the extended delivery.
+  const target = event.plan?.target_mw ?? 15
+  const planned = event.plan?.total_mw ?? 0
   const chartPoints = []
-  for (let min = 0; min <= 120; min += 15) {
-    let delivered = 0
-    if (event.step === 3) delivered = 4.0
-    else if (event.step === 4) delivered = 9.0
-    else if (event.step === 5) delivered = 12.0
-    else if (event.step >= 6) {
-      if (event.extensionAccepted === true) delivered = min > 90 ? 16.6 : 15.3
-      else if (event.extensionAccepted === false) delivered = min > 90 ? 14.8 : 15.3
-      else delivered = 15.2
-    }
-
-    chartPoints.push({
-      minute: `${min}m`,
-      requested: 15.0,
-      plan: 15.0,
-      delivered,
-    })
+  for (let min = 0; min <= 150; min += 15) {
+    let delivered = event.step >= 3 ? event.deliveredMw : 0
+    if (event.step === 7 && event.extensionAccepted !== null) delivered = min >= 120 ? event.deliveredMw : planned
+    chartPoints.push({ minute: `${min}m`, requested: target, plan: planned, delivered })
   }
 
   return (

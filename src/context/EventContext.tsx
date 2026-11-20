@@ -38,6 +38,10 @@ interface EventContextType {
   certificatePending: boolean
 }
 
+// MW at the meter from the given levers of a plan
+const leverMw = (plan: Plan | null, ids: string[]) =>
+  Math.round((plan?.levers ?? []).filter((l) => ids.includes(l.id)).reduce((s, l) => s + l.mw, 0) * 10) / 10
+
 // Naive local ISO timestamp (no timezone), matching the backend's forecast timestamps
 const toLocalIso = (d: Date) => {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -111,21 +115,19 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }
 
   const toggleLockout = (electricianName?: string) => {
-    setLockout((prev) => {
-      const nextActive = !prev.active
-      const by = nextActive ? (electricianName || 'Priyah (Lead Tech)') : null
-      const timestamp = nextActive ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
-
-      addAuditRow({
-        who: by || 'Field technician',
-        action: nextActive ? 'Lockout engaged' : 'Lockout released',
-        detail: nextActive
-          ? `Feeder 2B switchgear locked out. Automated switching on this feeder blocked.`
-          : `Feeder 2B cleared for remote switching.`,
-        status: nextActive ? 'watch' : 'ok',
-      })
-
-      return { active: nextActive, feeder: 'Feeder 2B', by, timestamp }
+    const nextActive = !lockout.active
+    const by = nextActive ? (electricianName || 'Priyah (Lead Tech)') : null
+    const timestamp = nextActive ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
+    setLockout({ active: nextActive, feeder: 'Feeder 2B', by, timestamp })
+    // Server enforces the interlock on every dispatch, whatever the client sends
+    api.lockout({ active: nextActive, by }).catch(() => {})
+    addAuditRow({
+      who: by || 'Field technician',
+      action: nextActive ? 'Lockout engaged' : 'Lockout released',
+      detail: nextActive
+        ? `Feeder 2B switchgear locked out. Automated switching on this feeder blocked.`
+        : `Feeder 2B cleared for remote switching.`,
+      status: nextActive ? 'watch' : 'ok',
     })
   }
 
@@ -203,7 +205,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               detail: '2.4 TB training state safely committed to NVRAM burst-buffer in 38s.',
               status: 'ok',
             })
-            return { ...prev, step: 4, deliveredMw: 7.0 }
+            return { ...prev, step: 4, deliveredMw: leverMw(prev.plan, ['precool', 'battery']) }
           }
           return { ...prev, checkpointProgress: prev.checkpointProgress + 25 }
         })
@@ -214,7 +216,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Step 4: GPU TDP Capped
     if (event.step === 4) {
       const timer = setTimeout(() => {
-        setEvent((prev) => ({ ...prev, step: 5, deliveredMw: 12.0 }))
+        setEvent((prev) => ({ ...prev, step: 5, deliveredMw: leverMw(prev.plan, ['precool', 'battery', 'tdp']) }))
         addAuditRow({
           who: 'NVIDIA NVML',
           action: 'GPU power capped',
@@ -228,7 +230,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Step 5: Batch Drained
     if (event.step === 5) {
       const timer = setTimeout(() => {
-        setEvent((prev) => ({ ...prev, step: 6, deliveredMw: 15.2, elapsedMin: 60 }))
+        setEvent((prev) => ({ ...prev, step: 6, deliveredMw: prev.plan?.total_mw ?? 0, elapsedMin: 60 }))
         addAuditRow({
           who: 'Slurm scheduler',
           action: 'Batch jobs drained',
@@ -273,6 +275,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         lockout_feeders: lockout.active ? ['2B'] : [],
       })
       const extensionMw = extended.total_mw + (deepCapApproved && extended.proposal ? extended.proposal.adds_mw : 0)
+      setEvent((prev) => ({ ...prev, deliveredMw: extensionMw }))
       const steps = Math.round(extended.duration_h * 4)
       const planSteps = Math.round(plan.duration_h * 4)
       const at = (i: number) => toLocalIso(new Date(evWindow.start.getTime() + i * 15 * 60_000))
@@ -314,7 +317,6 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...prev,
       isExtensionProposed: false,
       extensionAccepted: true,
-      deliveredMw: 16.6,
       step: 7,
     }))
     addAuditRow({
@@ -331,7 +333,6 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...prev,
       isExtensionProposed: false,
       extensionAccepted: false,
-      deliveredMw: 14.8,
       step: 7,
     }))
     addAuditRow({
