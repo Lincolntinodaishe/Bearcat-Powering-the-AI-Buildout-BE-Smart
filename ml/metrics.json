@@ -1,0 +1,48 @@
+{
+  "mae_mw": 0.312,
+  "mape": 0.0076,
+  "coverage": 0.89,
+  "coverage_uncalibrated": 0.647,
+  "benchmark_mae_mw": 0.43,
+  "benchmark": "Same time last week",
+  "conformal_margin_mw": 0.241,
+  "model": "LightGBM quantile (P05/P50/P95)",
+  "features": [
+    "hour",
+    "minute",
+    "dow",
+    "is_weekend",
+    "temp_f",
+    "lag_96",
+    "lag_192",
+    "lag_672",
+    "roll_mean_96"
+  ],
+  "quantiles": [
+    "p05",
+    "p50",
+    "p95"
+  ],
+  "train": {
+    "start": "2026-07-09T00:00:00",
+    "end": "2026-10-15T23:45:00",
+    "rows": 9504
+  },
+  "holdout": {
+    "start": "2026-10-23T00:00:00",
+    "end": "2026-10-29T23:45:00",
+    "rows": 672
+  },
+  "trained_through": "2026-10-29T23:45:00",
+  "demo_aligned": true,
+  "scaling": {
+    "a": 0.956793,
+    "b": 1.604677,
+    "raw_p05": 38.0389,
+    "raw_p95": 44.3098,
+    "target_p05_mw": 38.0,
+    "target_p95_mw": 44.0,
+    "note": "Normalized to campus scale: load_mw = a * raw + b"
+  },
+  "data": "Synthetic (see data/README_synthetic.md)"
+}

@@ -1,32 +1,115 @@
-# React + TypeScript + Vite
+# GridSync
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+When the grid is stressed, GridSync answers one question for an AI data center:
+**"How many megawatts can we safely give back, for how long, at what cost, and can we prove it?"**
 
-Currently, two official plugins are available:
+> Data center operators can accurately **forecast** and **verify** how much electricity demand can be
+> **safely** reduced, **for how long**, and **at what operational cost**, **without disrupting critical
+> computing workloads** or violating service commitments.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**All data is synthetic. GridSync uses no real customer, utility or facility data.**
+See [data/README_synthetic.md](data/README_synthetic.md).
 
-## React Compiler
+## Run it
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Requires Python 3.10 or later (developed on 3.13) and Node 18 or later.
 
-## Expanding the Oxlint configuration
+```bash
+pip install -r requirements.txt
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+python ml/train.py              # synthetic data → models, ml/metrics.json, forecast.json
+python -m backend.make_mocks    # regenerate the frontend mock JSON from the real functions
+python -m pytest -q             # 37 tests
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+python -m uvicorn backend.app:app --reload --port 8000   # API at http://localhost:8000/api
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Frontend: see [FRONTEND.md](FRONTEND.md).
+
+- `npm run dev` in `frontend/` proxies `/api` to port 8000.
+- `npm run build` writes into `backend/static/`, which FastAPI serves at `/`.
+
+The trained models and the built frontend are committed, so a deploy needs neither Node nor training.
+
+## Architecture
+
+1. **Forecast** (`ml/`). 15-minute campus load goes into LightGBM quantile models (P05/P50/P95, day-ahead,
+   every lag at least 24 h). A split-conformal step widens the band so it holds about 90% of actuals.
+2. **Plan** (`backend/plan.py`). Deterministic lever math, least disruptive first: pre-cool → battery →
+   training GPU power cap → batch drain. The inference pool is never a lever.
+3. **Safety**. A crew lockout on a feeder blocks every lever on that feeder. The server enforces this even if
+   the client doesn't ask. Pre-cool is used only if it can't create a new peak.
+4. **Verify** (`backend/certs.py`). Baseline (forecast P50) minus metered gives the verified reduction. The
+   certificate is put in a canonical JSON form, hashed with SHA-256 and signed with Ed25519. Changing any
+   field makes verification fail.
+5. **Serve** (`backend/app.py`). FastAPI runs the API and the built React app as one Render service.
+
+## Model metrics
+
+The holdout is the last 7 days, which the models never see. The week before it calibrates the band.
+
+| Metric | Value |
+|---|---|
+| P50 MAE | 0.31 MW |
+| P50 MAPE | 0.76% |
+| P05–P95 coverage | 89% (target 90%; 65% before conformal calibration) |
+| Benchmark MAE (same time last week) | 0.43 MW |
+| Improvement vs benchmark | 1.38× |
+
+The full figures are in [ml/metrics.json](ml/metrics.json). They include the campus scaling factors:
+the load is normalized so that P05 is 38 MW and P95 is 44 MW.
+
+## API
+
+| Method | Path | |
+|---|---|---|
+| GET | `/api/health` | `{ok, model_loaded}` |
+| GET | `/api/forecast?hours=24` | P05/P50/P95 + temperature, 15-min points |
+| GET | `/api/metrics` | Model metrics |
+| GET | `/api/site` | Pools, battery, substation, phases, lockout |
+| POST | `/api/lockout` | `{active, by}` (a name is required to activate) |
+| POST | `/api/dispatch` | Lever plan for `{target_mw, duration_h, warning_min, max_tdp_w, allow_batch_drain, lockout_feeders}` |
+| POST | `/api/certificate` | Signed M&V certificate for an event |
+| POST | `/api/verify` | `{valid, reason}` |
+| GET | `/api/certificates` | Settlement ledger |
+
+## Assumptions
+
+Every constant lives in [backend/site_model.py](backend/site_model.py) and is listed on the app's
+Assumptions page.
+
+| | |
+|---|---|
+| GPU pools | Inference 16,000 GPUs (protected) · training 10,000 · batch 3,000 |
+| Node power | 10.2 kW per 8-GPU node at 700 W (pools: 20.4 / 12.75 / 3.83 MW) · cooling 7.4 MW · site 44.4 MW |
+| Meter factor | 1.2: each MW of IT removed also removes about 0.2 MW of cooling |
+| Battery | 20 MWh, 5 MW, 90% charged, 40% kept as reserve, on Feeder 2B, $30/MWh wear |
+| Pre-cool | Up to 4 MW / 8 MWh, 15% efficiency penalty, 10.4 min ride-through, on Feeder 1A. The loop is charged at the forecast trough |
+| Training slowdown | `1 − (cap/700)^0.6`. *Assumes* throughput ∝ power^0.6 (450 W → 23%, 300 W → 40%) |
+| Checkpoint | 2.4 TB to burst buffers at 60 GB/s, about 40 s |
+| Prices | $0.085/kWh energy · $182/MWh LMP · $14/kW-month demand charge · $150/MWh DR payment (placeholder) · $2.50 per training GPU-hour · $1.00 per batch GPU-hour |
+| Substation | 56 MW capacity · transformer 71°C (alarm 95°C, trip 110°C) |
+| Forecast timing | Shown as "today": points are re-timed when served to start at the next quarter-hour in Memphis time (`SITE_TZ`). Clock times are kept, so the shape and peak time don't change. `trained_through` records the real end of the training data |
+
+## Deploy (Render)
+
+`render.yaml` defines a single free web service. In Render, choose **New → Blueprint** and pick this repo.
+
+1. Build command: `pip install -r requirements.txt`. Start command: `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`.
+2. Set the secret `GRIDSYNC_ED25519_KEY` to the contents of your local `backend/keys/ed25519.pem`.
+   This lets the deployed server verify the committed mock certificate, and certificates survive restarts.
+3. After deploy, open `/api/health`, `/api/forecast` and `/`. Free instances sleep when idle, so open the URL
+   a few minutes before judging.
+
+## Swapping in real data
+
+Replace the body of `load_raw_load()` in [ml/prep.py](ml/prep.py) (and `load_weather()` for a NOAA file), then run
+`python ml/train.py && python -m backend.make_mocks`. Cleaning, kW→MW conversion, the 15-minute resample,
+gap handling and campus scaling all run unchanged.
+
+## AI tools used
+
+- **Claude** (Anthropic): planning, the build specs (BACKEND.md / FRONTEND.md) and the design review
+- **Claude Code**: implemented the backend (data prep, model training, dispatch math, certificates, API, tests) from the specs
+- **SymStudio**
+- *Team: add any other tools you used here before submission.*
