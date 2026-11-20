@@ -104,6 +104,16 @@ def test_certificate_without_delivered_is_simulated():
     assert r.status_code == 200 and len(r.json()["intervals"]) == 10
 
 
+def test_sample_certificate_verifies_with_any_server_key(monkeypatch):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from backend import certs
+    other = Ed25519PrivateKey.generate()                 # e.g. a Render host without the env key
+    monkeypatch.setattr(certs, "private_key", lambda: other)
+    cert = client.get("/mock/certificate.json").json()
+    assert cert["public_key"] == certs.public_key_b64(other)
+    assert client.post("/api/verify", json=cert).json()["valid"] is True
+
+
 def test_bad_inputs_are_rejected():
     assert client.post("/api/dispatch", json={"target_mw": -1}).status_code == 422
     assert client.post("/api/certificate", json={**EVENT, "end": "2026-11-20T15:00:00"}).status_code == 422

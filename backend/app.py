@@ -111,6 +111,18 @@ def certificates():
     return certs.ledger_rows()
 
 
+@app.get("/mock/certificate.json")
+def sample_certificate():
+    """The sample certificate, signed with THIS server's key. The committed file was
+    signed with the dev key; if GRIDSYNC_ED25519_KEY isn't set on the host, re-sign the
+    same content (hash unchanged) so Verify on the sample works there too."""
+    path = sm.STATIC_DATA / "certificate.json"
+    cert = json.loads(path.read_text(encoding="utf-8"))
+    if certs.verify(cert)["valid"]:
+        return cert
+    return certs.sign({k: v for k, v in cert.items() if k not in certs.UNSIGNED})
+
+
 class SPAStaticFiles(StaticFiles):
     """Serve the built frontend; unknown non-API paths fall back to index.html (client routing)."""
 
