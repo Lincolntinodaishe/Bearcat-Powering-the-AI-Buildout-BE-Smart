@@ -52,7 +52,7 @@ const EventContext = createContext<EventContextType | undefined>(undefined)
 
 const initialLogs: AuditRow[] = [
   { id: '1', time: '13:45', who: 'EIA 930', action: 'Telemetry sync', detail: 'Substation baseline 44.4 MW verified via OpenADR', status: 'ok' },
-  { id: '2', time: '13:48', who: 'LightGBM', action: 'Forecast registered', detail: 'Day-ahead P50 model anchored at 44.2 MW peak', status: 'ok' },
+  { id: '2', time: '13:48', who: 'LightGBM', action: 'Forecast registered', detail: 'Day-ahead P05/P50/P95 forecast loaded for the next 24 h', status: 'ok' },
   { id: '3', time: '13:52', who: 'Telemetry', action: 'Thermal check', detail: 'Substation transformer core steady at 71°C (<95°C threshold)', status: 'ok' },
 ]
 

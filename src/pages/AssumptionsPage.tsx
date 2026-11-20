@@ -18,7 +18,7 @@ export const AssumptionsPage: React.FC = () => {
             <li><strong>Inference cluster:</strong> 20.4 MW protected baseline — never capped, shed, or throttled.</li>
             <li><strong>Training node power:</strong> 10.2 kW per node at 700 W base TDP (8x H100 SXM5).</li>
             <li><strong>Meter scaling factor:</strong> 1.20× (each 1.0 MW of IT load reduction drops cooling draw by 0.2 MW).</li>
-            <li><strong>Throughput scaling:</strong> Throughput ∝ Power^0.6 (empirical deep learning scaling law).</li>
+            <li><strong>Throughput scaling:</strong> Throughput ∝ Power^0.6 (assumption, used to estimate training slowdown).</li>
           </ul>
         </div>
 
@@ -52,7 +52,8 @@ export const AssumptionsPage: React.FC = () => {
           <ul className="space-y-1 text-ink2 text-[13px] list-disc list-inside">
             <li><strong>Model:</strong> LightGBM quantile regression (P05, P50, P95).</li>
             <li><strong>Cadence:</strong> 15-minute interval forecasting across 24-hour rolling horizon.</li>
-            <li><strong>Accuracy:</strong> MAE 0.42 MW (vs 1.31 MW last-week persistence benchmark).</li>
+            <li><strong>Accuracy (7-day holdout):</strong> MAE 0.31 MW, MAPE 0.76% (vs 0.43 MW same-time-last-week benchmark); P05–P95 band covers 89% of actuals after conformal calibration.</li>
+            <li><strong>Data:</strong> synthetic 15-min load (120 days, seed 42), normalized to campus scale (P05 → 38 MW, P95 → 44 MW); see data/README_synthetic.md.</li>
             <li><strong>Verification:</strong> Day-ahead P50 counterfactual baseline serves as the cryptographic ground truth.</li>
           </ul>
         </div>

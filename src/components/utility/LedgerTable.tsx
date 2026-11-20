@@ -1,15 +1,25 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { api } from '../../lib/api'
+import type { LedgerRow } from '../../lib/types'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
 import { useEvent } from '../../context/EventContext'
 
 export const LedgerTable: React.FC = () => {
-  const { setActiveNav } = useEvent()
+  const { setActiveNav, latestCertificate } = useEvent()
+  const [ledger, setLedger] = useState<LedgerRow[]>([])
 
-  const rows = [
-    { id: 'DR-1120-01', committed: '15.0 MW', verified: '15.3 MW', compliance: '98%', status: 'Verified' },
-    { id: 'DR-1114-04', committed: '12.0 MW', verified: '12.2 MW', compliance: '99%', status: 'Verified' },
-    { id: 'DR-1108-02', committed: '15.0 MW', verified: '15.1 MW', compliance: '97%', status: 'Verified' },
-  ]
+  // Signed certificates from the server (refreshes when a new one is issued)
+  useEffect(() => {
+    api.certificates().then(setLedger)
+  }, [latestCertificate])
+
+  const rows = ledger.map((r) => ({
+    id: r.dispatch_id,
+    committed: `${r.committed_mw.toFixed(1)} MW`,
+    verified: `${r.verified_mw.toFixed(1)} MW`,
+    compliance: `${Math.round(r.compliance * 100)}%`,
+    valid: r.valid,
+  }))
 
   return (
     <div className="bg-white border border-line rounded-card overflow-hidden">
@@ -32,6 +42,13 @@ export const LedgerTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-line text-ink">
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-6 text-center text-ink2">
+                  No settled events yet. Run a dispatch to issue a signed certificate.
+                </td>
+              </tr>
+            )}
             {rows.map((r) => (
               <tr
                 key={r.id}
@@ -43,9 +60,9 @@ export const LedgerTable: React.FC = () => {
                 <td className="px-5 py-3 text-right font-medium text-ink">{r.verified}</td>
                 <td className="px-5 py-3 text-right">{r.compliance}</td>
                 <td className="px-5 py-3 text-right">
-                  <span className="inline-flex items-center gap-1 text-ok font-medium text-[12px]">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>{r.status}</span>
+                  <span className={`inline-flex items-center gap-1 font-medium text-[12px] ${r.valid ? 'text-ok' : 'text-danger'}`}>
+                    {r.valid && <ShieldCheck className="w-3.5 h-3.5" />}
+                    <span>{r.valid ? 'Verified' : 'Failed'}</span>
                     <ChevronRight className="w-3.5 h-3.5 text-ink3 ml-0.5" />
                   </span>
                 </td>

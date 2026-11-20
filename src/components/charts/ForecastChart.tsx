@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { api } from '../../lib/api'
 import type { Forecast } from '../../lib/types'
+import { formatTime } from '../../lib/format'
 
 export const ForecastChart: React.FC = () => {
   const [forecast, setForecast] = useState<Forecast | null>(null)
@@ -137,7 +138,7 @@ export const ForecastChart: React.FC = () => {
 
       <div className="mt-3 text-[13px] text-ink2 pt-3 border-t border-line flex items-center justify-between">
         <span>Band = P05–P95 · Line = P50, also used as the verification baseline</span>
-        <span className="text-ink3">Peak {forecast.peak.p50} MW @ 4:15 PM</span>
+        <span className="text-ink3">Peak {forecast.peak.p50} MW @ {formatTime(forecast.peak.t)}</span>
       </div>
     </div>
   )

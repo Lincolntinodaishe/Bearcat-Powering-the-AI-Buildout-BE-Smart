@@ -118,6 +118,17 @@ export interface CertificateInterval {
   reduction_mw: number
 }
 
+// GET /api/certificates row
+export interface LedgerRow {
+  id: string
+  dispatch_id: string
+  committed_mw: number
+  verified_mw: number
+  compliance: number
+  hash_sha256: string
+  valid: boolean
+}
+
 // POST /api/certificate body (BACKEND.md section 6)
 export interface CertificateRequest {
   dispatch_id: string
