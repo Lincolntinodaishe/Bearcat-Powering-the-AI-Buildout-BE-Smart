@@ -1,0 +1,23 @@
+{
+  "target_mw": 15,
+  "duration_h": 2,
+  "levers": [
+    { "id": "precool", "name": "Pre-cool loop to 42°F, coast chillers", "mw": 4.0, "cost_usd": 102, "risk": "low", "note": "Keeps ≥10 min cooling ride-through; pre-cool stays below forecast peak", "blocked": false },
+    { "id": "battery", "name": "Discharge battery", "mw": 5.0, "cost_usd": 300, "risk": "low", "note": "40% kept as backup reserve", "blocked": false },
+    { "id": "tdp", "name": "Cap training GPUs 700 → 450 W", "mw": 3.0, "cost_usd": 11644, "risk": "medium", "note": "Training slows ~23%, no jobs stopped", "blocked": false },
+    { "id": "batch", "name": "Drain batch jobs at next checkpoint", "mw": 3.0, "cost_usd": 3913, "risk": "medium", "note": "Non-critical Slurm jobs drained at checkpoint, resume after event", "blocked": false }
+  ],
+  "protected": [{ "name": "Inference (16,000 GPUs)", "mw": 20.4 }],
+  "total_mw": 15.0,
+  "shortfall_mw": 0.0,
+  "ride_through_min": 10.4,
+  "cost_usd": 15959,
+  "value_usd": {
+    "demand_charge_avoided_per_month": 210000,
+    "dr_payment": 4500,
+    "energy_avoided": 5460
+  },
+  "safety": { "precool_below_peak": true, "lockout_blocks": [] },
+  "proposal": null,
+  "inference_curtailed_mw": 0
+}

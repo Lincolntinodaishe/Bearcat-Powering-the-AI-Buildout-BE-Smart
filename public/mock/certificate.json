@@ -1,0 +1,35 @@
+{
+  "id": "MV-2026-1120-01",
+  "event": {
+    "dispatch_id": "DR-1120-01",
+    "source": "MLGW (OpenADR 2.0b, simulated)",
+    "start": "2026-11-20T16:00:00",
+    "end": "2026-11-20T18:30:00",
+    "target_mw": 15.0
+  },
+  "intervals": [
+    { "t": "2026-11-20T16:00:00", "baseline_mw": 44.1, "metered_mw": 28.9, "reduction_mw": 15.2 },
+    { "t": "2026-11-20T16:15:00", "baseline_mw": 44.2, "metered_mw": 28.8, "reduction_mw": 15.4 },
+    { "t": "2026-11-20T16:30:00", "baseline_mw": 44.1, "metered_mw": 28.7, "reduction_mw": 15.4 },
+    { "t": "2026-11-20T16:45:00", "baseline_mw": 44.0, "metered_mw": 28.6, "reduction_mw": 15.4 },
+    { "t": "2026-11-20T17:00:00", "baseline_mw": 43.8, "metered_mw": 28.5, "reduction_mw": 15.3 },
+    { "t": "2026-11-20T17:15:00", "baseline_mw": 43.6, "metered_mw": 28.3, "reduction_mw": 15.3 },
+    { "t": "2026-11-20T17:30:00", "baseline_mw": 43.3, "metered_mw": 28.1, "reduction_mw": 15.2 },
+    { "t": "2026-11-20T17:45:00", "baseline_mw": 43.0, "metered_mw": 27.9, "reduction_mw": 15.1 },
+    { "t": "2026-11-20T18:00:00", "baseline_mw": 42.6, "metered_mw": 27.5, "reduction_mw": 15.1 },
+    { "t": "2026-11-20T18:15:00", "baseline_mw": 42.2, "metered_mw": 27.2, "reduction_mw": 15.0 }
+  ],
+  "summary": {
+    "avg_reduction_mw": 15.3,
+    "min_reduction_mw": 14.6,
+    "energy_mwh": 38.2,
+    "compliance": 0.98,
+    "inference_curtailed_mw": 0,
+    "sla_breaches": 0
+  },
+  "baseline_method": "Day-ahead LightGBM P50 forecast (counterfactual)",
+  "hash_sha256": "9f2c84d1a58e07a3c74932e652bf102f4a138bb39c9f22086c752ba19d8544a1",
+  "signature_ed25519": "b41a98ec5123d90f23a48e71c9902bd512a849f123ec1192837bc901ef512903",
+  "public_key": "MCowBQYDK2VwAyEAX99gX12u098Kl4a3m1q82B1k8L61K7Y8812",
+  "signed_at": "2026-11-20T18:31:02"
+}
