@@ -1,0 +1,53 @@
+{
+  "pools": [
+    {
+      "id": "inference",
+      "name": "Inference",
+      "gpus": 16000,
+      "mw": 20.4,
+      "protected": true
+    },
+    {
+      "id": "training",
+      "name": "Training cluster",
+      "gpus": 10000,
+      "mw": 12.75,
+      "protected": false,
+      "tdp_w": 700
+    },
+    {
+      "id": "batch",
+      "name": "Batch (Slurm)",
+      "gpus": 3000,
+      "mw": 3.83,
+      "protected": false
+    }
+  ],
+  "cooling_mw": 7.4,
+  "site_mw": 44.4,
+  "battery": {
+    "capacity_mwh": 20,
+    "max_mw": 5,
+    "soc": 0.9,
+    "reserve": 0.4
+  },
+  "substation": {
+    "capacity_mw": 56,
+    "headroom_mw": 11.6,
+    "transformer_temp_c": 71,
+    "transformer_alarm_c": 95,
+    "transformer_trip_c": 110
+  },
+  "phases": {
+    "a_mw": 14.9,
+    "b_mw": 14.6,
+    "c_mw": 14.9
+  },
+  "lmp_usd_mwh": 182,
+  "lockout": {
+    "active": false,
+    "feeder": "Feeder 2B",
+    "by": null,
+    "since": null
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "MV-2026-1120-01",
+  "event": {
+    "dispatch_id": "DR-1120-01",
+    "source": "MLGW (OpenADR 2.0b, simulated)",
+    "start": "2026-11-20T16:00:00",
+    "end": "2026-11-20T18:30:00",
+    "target_mw": 15.0
+  },
+  "intervals": [
+    {
+      "t": "2026-11-20T16:00:00",
+      "baseline_mw": 43.7,
+      "metered_mw": 28.6,
+      "reduction_mw": 15.1
+    },
+    {
+      "t": "2026-11-20T16:15:00",
+      "baseline_mw": 43.5,
+      "metered_mw": 28.9,
+      "reduction_mw": 14.6
+    },
+    {
+      "t": "2026-11-20T16:30:00",
+      "baseline_mw": 43.5,
+      "metered_mw": 28.7,
+      "reduction_mw": 14.8
+    },
+    {
+      "t": "2026-11-20T16:45:00",
+      "baseline_mw": 43.5,
+      "metered_mw": 28.7,
+      "reduction_mw": 14.8
+    },
+    {
+      "t": "2026-11-20T17:00:00",
+      "baseline_mw": 43.5,
+      "metered_mw": 28.3,
+      "reduction_mw": 15.2
+    },
+    {
+      "t": "2026-11-20T17:15:00",
+      "baseline_mw": 43.4,
+      "metered_mw": 28.2,
+      "reduction_mw": 15.2
+    },
+    {
+      "t": "2026-11-20T17:30:00",
+      "baseline_mw": 43.4,
+      "metered_mw": 28.0,
+      "reduction_mw": 15.4
+    },
+    {
+      "t": "2026-11-20T17:45:00",
+      "baseline_mw": 43.1,
+      "metered_mw": 28.5,
+      "reduction_mw": 14.6
+    },
+    {
+      "t": "2026-11-20T18:00:00",
+      "baseline_mw": 43.0,
+      "metered_mw": 26.5,
+      "reduction_mw": 16.5
+    },
+    {
+      "t": "2026-11-20T18:15:00",
+      "baseline_mw": 43.1,
+      "metered_mw": 27.0,
+      "reduction_mw": 16.1
+    }
+  ],
+  "summary": {
+    "avg_reduction_mw": 15.2,
+    "min_reduction_mw": 14.6,
+    "energy_mwh": 38.1,
+    "compliance": 1.0,
+    "inference_curtailed_mw": 0,
+    "sla_breaches": 0
+  },
+  "baseline_method": "Day-ahead LightGBM P50 forecast (counterfactual)",
+  "signed_at": "2026-11-20T14:17:39",
+  "hash_sha256": "8cd1fc02bcd5ef1586fa63fd8c9eaecbbe89751640c4add0ebc579acaae9c083",
+  "signature_ed25519": "Lq7e5qQhKW7tn8qQ0/EyzoX0khfoJj6dIqrB58O76MjT00mp0ED+LV+11sAvAo1A5u3qwPIbug4JtxJXgSV7Bg==",
+  "public_key": "1pDJJp84dPf+nyoFhXJMTXEdACBSSmNU5MWou2k5Jso="
+}
