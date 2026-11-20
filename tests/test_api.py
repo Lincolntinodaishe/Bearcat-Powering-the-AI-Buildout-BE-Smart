@@ -34,6 +34,16 @@ def test_forecast_slices_hours():
     assert len(client.get("/api/forecast?hours=6").json()["points"]) == 24
 
 
+def test_forecast_is_realigned_to_now_at_serve_time():
+    from datetime import datetime, timedelta
+
+    pts = client.get("/api/forecast").json()["points"]
+    first = datetime.fromisoformat(pts[0]["t"])
+    assert timedelta(0) <= first - sm.site_now() <= timedelta(minutes=15)
+    raw = {p["t"][11:16]: p["p50"] for p in sm.load_forecast()["points"]}
+    assert all(raw[p["t"][11:16]] == p["p50"] for p in pts)      # same value at the same clock time
+
+
 def test_metrics():
     r = client.get("/api/metrics")
     assert r.status_code == 200 and {"mae_mw", "mape", "coverage", "benchmark_mae_mw", "scaling"} <= r.json().keys()

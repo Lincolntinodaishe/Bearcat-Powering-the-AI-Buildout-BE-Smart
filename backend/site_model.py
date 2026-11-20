@@ -5,14 +5,18 @@ Everything the plan, certificates and Assumptions page use comes from here.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+import math
+import os
+from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DATA = ROOT / "backend" / "static_data"
 FORECAST_PATH = STATIC_DATA / "forecast.json"
+SITE_TZ = ZoneInfo(os.environ.get("SITE_TZ", "America/Chicago"))   # Memphis
 
 GPU_IDLE_TDP_W = 700               # full per-GPU power (the uncapped TDP)
 GPUS_PER_NODE = 8
@@ -47,6 +51,11 @@ BATCH_MAX_MW = 4.6                  # 3.83 MW IT × 1.2 at the meter
 lockout: dict = {"active": False, "feeder": "2B", "by": None, "since": None}
 
 
+def site_now() -> datetime:
+    """Naive wall-clock time at the site (servers like Render run in UTC)."""
+    return datetime.now(SITE_TZ).replace(tzinfo=None)
+
+
 def rnd(x: float, ndigits: int = 0) -> float:
     """Round half-up (Python's round() gives 3.825 -> 3.82; we want 3.83, like JS/Excel)."""
     q = Decimal(1).scaleb(-ndigits)
@@ -71,7 +80,7 @@ def normalize_feeder(f: str) -> str:
 def set_lockout(active: bool, by: str | None) -> dict:
     lockout["active"] = active
     lockout["by"] = by if active else None
-    lockout["since"] = datetime.now().replace(microsecond=0).isoformat() if active else None
+    lockout["since"] = site_now().replace(microsecond=0).isoformat() if active else None
     return lockout_payload()
 
 
@@ -90,6 +99,38 @@ def load_forecast() -> dict | None:
     if not FORECAST_PATH.exists():
         return None
     return json.loads(FORECAST_PATH.read_text(encoding="utf-8"))
+
+
+def current_forecast() -> dict | None:
+    """The forecast re-timed to start at the next quarter-hour from now, at serve time
+    (DEMO_ALIGN_TODAY=1, the default), so a deploy keeps reading as "today".
+    Each new timestamp takes the point with the same clock time, so the shape and
+    peak time are unchanged. trained_through still records the real training cut-off."""
+    f = load_forecast()
+    if f is None or os.environ.get("DEMO_ALIGN_TODAY", "1") != "1":
+        return f
+    now = site_now()
+    hour = now.replace(minute=0, second=0, microsecond=0)
+    start = hour + timedelta(minutes=15 * math.ceil((now - hour).total_seconds() / 900))
+    return _realign(start.isoformat())
+
+
+@lru_cache(maxsize=4)
+def _realign(start_iso: str) -> dict:
+    f = load_forecast()
+    by_tod = {datetime.fromisoformat(p["t"]).strftime("%H:%M"): p for p in f["points"]}
+    if len(by_tod) != len(f["points"]):
+        return f                                   # not a single-day profile; leave as is
+    start = datetime.fromisoformat(start_iso)
+    points = []
+    for i in range(len(f["points"])):
+        t = start + timedelta(minutes=15 * i)
+        src = by_tod.get(t.strftime("%H:%M"))
+        if src is None:
+            return f
+        points.append({**src, "t": t.isoformat()})
+    peak = max(points, key=lambda p: p["p50"])
+    return {**f, "peak": {"t": peak["t"], "p50": peak["p50"]}, "points": points}
 
 
 def site_payload() -> dict:

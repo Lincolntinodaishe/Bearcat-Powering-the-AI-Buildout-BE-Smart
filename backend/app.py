@@ -45,7 +45,7 @@ def model_loaded() -> bool:
 
 def forecast_data() -> dict:
     """Trained forecast, else the frontend mock (model_loaded reports which)."""
-    f = sm.load_forecast()
+    f = sm.current_forecast()
     if f is None and MOCK_FORECAST.exists():
         f = json.loads(MOCK_FORECAST.read_text(encoding="utf-8"))
     if f is None:

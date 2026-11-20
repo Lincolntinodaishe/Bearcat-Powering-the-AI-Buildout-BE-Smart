@@ -159,7 +159,7 @@ def build_certificate(req: CertificateRequest, forecast: dict | None = None,
                       signed_at: datetime | None = None) -> dict:
     if req.end <= req.start:
         raise ValueError("end must be after start")
-    baseline = baseline_lookup(forecast if forecast is not None else sm.load_forecast())
+    baseline = baseline_lookup(forecast if forecast is not None else sm.current_forecast())
     delivered = sorted(req.delivered or simulate_delivered(req), key=lambda d: d.t)
     if not delivered:
         raise ValueError("no delivered intervals")
@@ -183,7 +183,7 @@ def build_certificate(req: CertificateRequest, forecast: dict | None = None,
                     "energy_mwh": rnd(sum(reds) * 0.25, 1), "compliance": rnd(met / len(reds), 2),
                     "inference_curtailed_mw": 0, "sla_breaches": 0},
         "baseline_method": BASELINE_METHOD,
-        "signed_at": (signed_at or datetime.now()).replace(microsecond=0).isoformat(),
+        "signed_at": (signed_at or sm.site_now()).replace(microsecond=0).isoformat(),
     }
     return sign(cert)
 
