@@ -10,6 +10,42 @@ When the grid is stressed, GridSync answers one question for an AI data center:
 **All data is synthetic. GridSync uses no real customer, utility or facility data.**
 See [data/README_synthetic.md](data/README_synthetic.md).
 
+## Live demo
+
+**https://gridsync-z0tn.onrender.com**
+
+The app runs on Render's free plan, which sleeps when idle, so the first load can take about a minute.
+Each run of the event produces a newly signed certificate, so its figures vary by a few percent between runs.
+
+### Demo script (about 90 seconds)
+
+1. **Forecast (Utility view).** "Our model forecasts today's peak at **43.7 MW at 3:45 PM**. On a week it never
+   saw in training, it was off by **0.31 MW** on average, compared with **0.43 MW** for the 'same time last week'
+   benchmark: about 28% less error. It also gives a P05–P95 band that held **89%** of actual load. Using levers
+   only, and without touching inference, we can safely shed up to **16.6 MW for 2 hours**."
+2. **Dispatch (Simulate 15 MW dispatch).** The utility asks for 15 MW for 2 hours. GridSync plans it least-disruptive first:
+   pre-cool **4.0 MW**, battery **5.0 MW**, training GPUs capped 700 → 450 W **3.0 MW**, batch drain **3.0 MW**,
+   for a total of **15.0 MW**. "It costs **$15,959**, mostly slower training. Against that, we avoid **$210,000 a month**
+   in peak demand charges, and earn a **$4,500** demand-response payment. Inference (**20.4 MW, 16,000 GPUs**) is
+   never a lever." Approve the plan.
+3. **Execution.** Training state is checkpointed (2.4 TB in about 40 s), the GPU cap is applied, batch jobs are
+   drained, and the 15 MW target is reached.
+4. **Something goes wrong.** The utility extends the event by 30 minutes. A 2.5 h event leaves less battery and
+   pre-cool energy per hour, so the plan drops to **14.8 MW**, **0.2 MW short**. GridSync proposes a deeper cap,
+   450 → 300 W, for the last 30 minutes: **+1.8 MW** for **$2,071**, with no jobs stopped. Approve it, and the last
+   30 minutes deliver about **16.6 MW**.
+5. **Proof (certificate).** The baseline is the forecast's P50, and verified reduction = baseline − metered.
+   "About **15.4 MW** average and **38 MWh**, with **100%** of intervals at or above 95% of target and
+   **0 MW of inference curtailed**." Click **Verify certificate**: green, because the SHA-256 hash and Ed25519
+   signature both check out. Click **Tamper test**: one meter reading changes by 0.5 MW, and it turns red with
+   *hash mismatch*. "That's what the utility settles on."
+6. **Safety (Field technician view).** Turn on the crew lockout for Feeder 2B. The battery's inverter is on that
+   feeder, so GridSync won't use it: a new plan gives **11.6 MW, 3.4 MW short**, and says so plainly. The server
+   enforces this, not just the screen.
+
+**If asked about rejecting the deeper cap:** the last 30 minutes deliver about **14.8 MW**. That still meets the
+95%-of-target bar (14.25 MW), so compliance remains 100%, but the average reduction falls to about **15.0 MW**.
+
 ## Run it
 
 Requires Python 3.10 or later (developed on 3.13) and Node 18 or later.
