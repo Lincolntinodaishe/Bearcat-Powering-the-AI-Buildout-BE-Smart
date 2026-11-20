@@ -33,10 +33,6 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
 
       {/* Right: Demo Pill + Action Button */}
       <div className="flex items-center gap-3">
-        <span className="hidden sm:inline-block px-2.5 py-1 rounded-[6px] bg-panel text-[12px] text-ink3 border border-line">
-          Synthetic demo data
-        </span>
-
         <button
           onClick={handleSimulateClick}
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] border border-watch text-watch hover:bg-watch/10 text-[13px] font-medium transition"
