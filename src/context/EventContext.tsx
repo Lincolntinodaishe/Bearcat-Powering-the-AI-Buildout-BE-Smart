@@ -193,6 +193,14 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     if (!event.active) return
 
+    // Step 1 → 2: show the ingested signal briefly, then present the plan for approval
+    if (event.step === 1) {
+      const timer = setTimeout(() => {
+        setEvent((prev) => (prev.step === 1 ? { ...prev, step: 2 } : prev))
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+
     // Step 3: Checkpointing simulation (~4 seconds accelerated)
     if (event.step === 3) {
       const interval = setInterval(() => {
