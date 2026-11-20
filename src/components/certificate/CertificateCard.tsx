@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   ResponsiveContainer,
   LineChart,
@@ -11,6 +11,7 @@ import {
 import { ShieldCheck, Copy, Check } from 'lucide-react'
 import type { Certificate } from '../../lib/types'
 import { useEvent } from '../../context/EventContext'
+import { api } from '../../lib/api'
 import { formatMw, formatMwh } from '../../lib/format'
 
 interface CertificateCardProps {
@@ -21,33 +22,42 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
   const { addAuditRow } = useEvent()
   const [cert, setCert] = useState<Certificate>(certificate)
   const [verifyState, setVerifyState] = useState<'unverified' | 'valid' | 'invalid'>('unverified')
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
   const [isTampered, setIsTampered] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Verify button handler
-  const handleVerify = () => {
-    if (isTampered) {
-      setVerifyState('invalid')
+  // A new certificate (e.g. issued at the end of an event) starts unverified
+  useEffect(() => {
+    setCert(certificate)
+    setIsTampered(false)
+    setVerifyState('unverified')
+    setReason('')
+  }, [certificate])
+
+  // Real check: server verifies hash + Ed25519 signature + signing key;
+  // if the API is unreachable, the browser recomputes the SHA-256 hash.
+  const runVerify = async (target: Certificate, who: string) => {
+    setBusy(true)
+    try {
+      const result = await api.verify(target)
+      setVerifyState(result.valid ? 'valid' : 'invalid')
+      setReason(result.reason)
       addAuditRow({
-        who: 'Auditor',
-        action: 'Verification failed',
-        detail: 'Hash mismatch: interval payload does not match signed SHA-256 digest.',
-        status: 'danger',
+        who,
+        action: result.valid ? 'Certificate verified' : 'Verification failed',
+        detail: `${target.id}: ${result.reason}`,
+        status: result.valid ? 'ok' : 'danger',
       })
-    } else {
-      setVerifyState('valid')
-      addAuditRow({
-        who: 'Auditor',
-        action: 'Certificate verified',
-        detail: 'Valid signature and hash match day-ahead counterfactual intervals.',
-        status: 'ok',
-      })
+    } finally {
+      setBusy(false)
     }
   }
 
-  // Tamper test handler
+  const handleVerify = () => runVerify(cert, 'Auditor')
+
+  // Tamper test: silently change one interval's metered_mw by -0.5, then re-verify
   const handleTamperTest = () => {
-    // Silently change one interval's metered_mw by -0.5
     const tampered = {
       ...cert,
       intervals: cert.intervals.map((inv, idx) =>
@@ -56,26 +66,26 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
     }
     setCert(tampered)
     setIsTampered(true)
-    setVerifyState('invalid')
     addAuditRow({
       who: 'Tamper test',
       action: 'Interval modified',
-      detail: 'Metered load altered by -0.5 MW. Cryptographic hash invalidated.',
-      status: 'danger',
+      detail: `${cert.id}: metered load in interval 3 altered by -0.5 MW`,
+      status: 'watch',
     })
+    runVerify(tampered, 'Tamper test')
   }
 
-  // Restore original handler
+  // Restore the original as issued, then re-verify
   const handleRestore = () => {
     setCert(certificate)
     setIsTampered(false)
-    setVerifyState('valid')
     addAuditRow({
       who: 'Tamper test',
       action: 'Restored original',
-      detail: 'Certificate restored to verified baseline.',
+      detail: `${certificate.id}: original certificate restored`,
       status: 'ok',
     })
+    runVerify(certificate, 'Tamper test')
   }
 
   const handleCopy = () => {
@@ -94,12 +104,12 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
             {verifyState === 'valid' && (
               <span className="inline-flex items-center gap-1 text-[12px] font-medium text-ok bg-ok/10 px-2.5 py-0.5 rounded-full">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Valid — signature and hash match</span>
+                <span>Valid — {reason.charAt(0).toLowerCase() + reason.slice(1)}</span>
               </span>
             )}
             {verifyState === 'invalid' && (
               <span className="inline-flex items-center gap-1 text-[12px] font-medium text-danger bg-danger/10 px-2.5 py-0.5 rounded-full">
-                <span>Invalid — hash mismatch</span>
+                <span>Invalid — {reason.charAt(0).toLowerCase() + reason.slice(1)}</span>
               </span>
             )}
           </div>
@@ -113,6 +123,7 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
           {isTampered ? (
             <button
               onClick={handleRestore}
+              disabled={busy}
               className="px-3.5 py-1.5 border border-line hover:bg-panel text-ink rounded-[8px] text-[13px] font-medium transition"
             >
               Restore original
@@ -120,6 +131,7 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
           ) : (
             <button
               onClick={handleTamperTest}
+              disabled={busy}
               className="px-3.5 py-1.5 border border-line hover:bg-panel text-ink2 hover:text-ink rounded-[8px] text-[13px] font-medium transition"
             >
               Tamper test
@@ -128,9 +140,10 @@ export const CertificateCard: React.FC<CertificateCardProps> = ({ certificate })
 
           <button
             onClick={handleVerify}
-            className="px-4 py-1.5 bg-accent hover:bg-accent/90 text-white rounded-[8px] text-[13px] font-medium transition"
+            disabled={busy}
+            className="px-4 py-1.5 bg-accent hover:bg-accent/90 text-white rounded-[8px] text-[13px] font-medium transition disabled:opacity-60"
           >
-            Verify certificate
+            {busy ? 'Verifying…' : 'Verify certificate'}
           </button>
         </div>
       </div>
