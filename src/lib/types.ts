@@ -118,6 +118,16 @@ export interface CertificateInterval {
   reduction_mw: number
 }
 
+// POST /api/certificate body (BACKEND.md section 6)
+export interface CertificateRequest {
+  dispatch_id: string
+  source: string
+  start: string
+  end: string
+  target_mw: number
+  delivered: { t: string; reduction_mw: number }[]
+}
+
 export interface Certificate {
   id: string
   event: {

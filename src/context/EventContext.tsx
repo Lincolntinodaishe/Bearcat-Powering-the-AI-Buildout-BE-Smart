@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import type { AuditRow, Site, Plan, Certificate } from '../lib/types'
 import { api } from '../lib/api'
 
@@ -35,6 +35,13 @@ interface EventContextType {
   activeNav: string
   setActiveNav: (nav: string) => void
   latestCertificate: Certificate | null
+  certificatePending: boolean
+}
+
+// Naive local ISO timestamp (no timezone), matching the backend's forecast timestamps
+const toLocalIso = (d: Date) => {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined)
@@ -79,10 +86,14 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     checkpointProgress: 0,
   })
 
-  // Load initial site data
+  const [certificatePending, setCertificatePending] = useState(false)
+  // Dispatch window for the current event (set when the signal arrives)
+  const eventWindowRef = useRef<{ dispatchId: string; start: Date } | null>(null)
+
+  // Load initial site data; show the signed sample certificate until an event is run
   useEffect(() => {
     api.site().then((data) => setSite(data))
-    api.certificate({}).then((cert) => setLatestCertificate(cert))
+    api.sampleCertificate().then((cert) => setLatestCertificate(cert)).catch(() => {})
   }, [])
 
   const setPersona = (p: Persona) => {
@@ -120,6 +131,15 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Event Machine Functions
   const startEvent = () => {
+    // Event starts after the 20-min warning, on the next quarter-hour
+    const start = new Date(Date.now() + 20 * 60_000)
+    start.setSeconds(0, 0)
+    start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15)
+    const p = (n: number) => String(n).padStart(2, '0')
+    eventWindowRef.current = {
+      dispatchId: `DR-${p(start.getMonth() + 1)}${p(start.getDate())}-${p(start.getHours())}${p(start.getMinutes())}`,
+      start,
+    }
     api.dispatch({
       target_mw: 15,
       duration_h: 2,
@@ -234,6 +254,61 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [event.active, event.step, event.isExtensionProposed, event.extensionAccepted])
 
+  // Step 7: sign the M&V certificate for THIS event. Metering is simulated from the
+  // plans: first 2 h at the approved plan's total, the 30-min extension at the extended
+  // plan's total (+ the deeper cap only if approved), each 15-min interval × 0.97–1.03.
+  const issueCertificate = async (deepCapApproved: boolean) => {
+    const plan = event.plan
+    const evWindow = eventWindowRef.current
+    if (!plan || !evWindow) return
+    setLatestCertificate(null)
+    setCertificatePending(true)
+    try {
+      const extended = await api.dispatch({
+        target_mw: plan.target_mw,
+        duration_h: plan.duration_h + 0.5,
+        warning_min: 20,
+        max_tdp_w: 450,
+        allow_batch_drain: true,
+        lockout_feeders: lockout.active ? ['2B'] : [],
+      })
+      const extensionMw = extended.total_mw + (deepCapApproved && extended.proposal ? extended.proposal.adds_mw : 0)
+      const steps = Math.round(extended.duration_h * 4)
+      const planSteps = Math.round(plan.duration_h * 4)
+      const at = (i: number) => toLocalIso(new Date(evWindow.start.getTime() + i * 15 * 60_000))
+      const delivered = Array.from({ length: steps }, (_, i) => ({
+        t: at(i),
+        reduction_mw: Math.round((i < planSteps ? plan.total_mw : extensionMw) * (0.97 + Math.random() * 0.06) * 100) / 100,
+      }))
+      const cert = await api.certificate({
+        dispatch_id: evWindow.dispatchId,
+        source: 'MLGW (OpenADR 2.0b, simulated)',
+        start: at(0),
+        end: at(steps),
+        target_mw: plan.target_mw,
+        delivered,
+      })
+      setLatestCertificate(cert)
+      if (cert.event.dispatch_id !== evWindow.dispatchId) {
+        addAuditRow({
+          who: 'GridSync',
+          action: 'Certificate not signed',
+          detail: 'API unavailable — showing the sample certificate, not this event.',
+          status: 'danger',
+        })
+      } else {
+        addAuditRow({
+          who: 'GridSync M&V',
+          action: 'Certificate signed',
+          detail: `${cert.id}: ${cert.summary.avg_reduction_mw} MW avg · ${Math.round(cert.summary.compliance * 100)}% compliance · ${cert.summary.inference_curtailed_mw} MW inference curtailed`,
+          status: cert.summary.compliance >= 0.95 ? 'ok' : 'watch',
+        })
+      }
+    } finally {
+      setCertificatePending(false)
+    }
+  }
+
   const approveProposal = () => {
     setEvent((prev) => ({
       ...prev,
@@ -245,9 +320,10 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditRow({
       who: 'Tariq (Facility AI)',
       action: 'Deep cap approved',
-      detail: 'Approved training cap 450 → 300 W (+1.8 MW). Target maintained at 98% compliance.',
+      detail: 'Approved training cap 450 → 300 W (+1.8 MW) for the 30-min extension.',
       status: 'ok',
     })
+    issueCertificate(true)
   }
 
   const rejectProposal = () => {
@@ -261,9 +337,10 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditRow({
       who: 'Tariq (Facility AI)',
       action: 'Deep cap rejected',
-      detail: 'Absorbed 0.2 MW shortfall to avoid further training slowdown. Compliance: 93%.',
+      detail: 'Accepted the 0.2 MW shortfall to avoid further training slowdown.',
       status: 'watch',
     })
+    issueCertificate(false)
   }
 
   const resetEvent = () => {
@@ -307,6 +384,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         activeNav,
         setActiveNav,
         latestCertificate,
+        certificatePending,
       }}
     >
       {children}

@@ -19,6 +19,7 @@ export const EventView: React.FC = () => {
     rejectProposal,
     resetEvent,
     latestCertificate,
+    certificatePending,
   } = useEvent()
 
   // Generate chart data matching the current event state
@@ -146,10 +147,16 @@ export const EventView: React.FC = () => {
       )}
 
       {/* Final Certificate Card if completed */}
-      {event.step === 7 && latestCertificate && (
+      {event.step === 7 && (certificatePending || latestCertificate) && (
         <div className="pt-4 border-t border-line space-y-3">
           <h3 className="text-[17px] font-semibold text-ink">Generated M&V certificate</h3>
-          <CertificateCard certificate={latestCertificate} />
+          {certificatePending || !latestCertificate ? (
+            <div className="bg-white border border-line rounded-card p-6 text-[13px] text-ink2">
+              Signing M&V certificate against the day-ahead baseline…
+            </div>
+          ) : (
+            <CertificateCard certificate={latestCertificate} />
+          )}
         </div>
       )}
     </div>
