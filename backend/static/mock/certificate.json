@@ -78,8 +78,8 @@
     "sla_breaches": 0
   },
   "baseline_method": "Day-ahead LightGBM P50 forecast (counterfactual)",
-  "signed_at": "2026-11-20T14:17:39",
-  "hash_sha256": "8cd1fc02bcd5ef1586fa63fd8c9eaecbbe89751640c4add0ebc579acaae9c083",
-  "signature_ed25519": "Lq7e5qQhKW7tn8qQ0/EyzoX0khfoJj6dIqrB58O76MjT00mp0ED+LV+11sAvAo1A5u3qwPIbug4JtxJXgSV7Bg==",
+  "signed_at": "2026-11-20T13:28:48",
+  "hash_sha256": "dd1803b2bb21f567be64e87d50a70923c3cb59be997df547fa038c51cc5a6b90",
+  "signature_ed25519": "p1w4O3u+z0Eg2Y5BXnHk8Y7uTegNa7PL4rzlYjGJMPQVzfo8mXOrqWrWggOfI2q5zZuerTp6bYGZKY8/2kKGDQ==",
   "public_key": "1pDJJp84dPf+nyoFhXJMTXEdACBSSmNU5MWou2k5Jso="
 }

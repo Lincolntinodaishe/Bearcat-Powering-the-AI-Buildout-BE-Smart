@@ -23,7 +23,7 @@ from ml.prep import FREQ, STEPS_PER_DAY, build_dataset  # noqa: E402
 MODELS = ROOT / "ml" / "models"
 METRICS = ROOT / "ml" / "metrics.json"
 OUT = ROOT / "backend" / "static_data" / "forecast.json"
-OUT_MOCK = ROOT / "frontend" / "public" / "mock" / "forecast.json"
+OUT_MOCK = ROOT / "public" / "mock" / "forecast.json"
 
 SITE = "Memphis AI Campus · Hall A–C"
 QUANTILES = {"p05": 0.05, "p50": 0.5, "p95": 0.95}

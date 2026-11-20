@@ -1,7 +1,8 @@
 """Write the frontend mock files by calling the real backend functions (BACKEND.md section 7).
 
 Run after `python ml/train.py`:  python -m backend.make_mocks
-Writes backend/static_data/*.json and copies them to frontend/public/mock/.
+Writes backend/static_data/*.json and copies them to public/mock/ (the Vite app,
+at the repo root, serves them at /mock/ and falls back to them if the API is down).
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from backend import certs
 from backend import site_model as sm
 from backend.plan import DispatchRequest, build_plan
 
-MOCK_DIR = sm.ROOT / "frontend" / "public" / "mock"
+MOCK_DIR = sm.ROOT / "public" / "mock"
 
 
 def approved_event_delivery(start: datetime) -> list[certs.Delivered]:
@@ -53,7 +54,7 @@ def main() -> None:
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         shutil.copyfile(path, MOCK_DIR / name)
     shutil.copyfile(sm.FORECAST_PATH, MOCK_DIR / "forecast.json")
-    print(f"wrote {', '.join(files)} (+ forecast.json) to backend/static_data and frontend/public/mock")
+    print(f"wrote {', '.join(files)} (+ forecast.json) to backend/static_data and public/mock")
     print(f"certificate {cert['id']}: {cert['summary']}  verify: {files['verify.json']['reason']}")
 
 

@@ -20,7 +20,7 @@ from backend.plan import DispatchRequest, build_plan
 MODELS_DIR = sm.ROOT / "ml" / "models"
 METRICS_PATH = sm.ROOT / "ml" / "metrics.json"
 STATIC_UI = sm.ROOT / "backend" / "static"
-MOCK_FORECAST = sm.ROOT / "frontend" / "public" / "mock" / "forecast.json"
+MOCK_FORECAST = sm.ROOT / "public" / "mock" / "forecast.json"
 
 app = FastAPI(title="GridSync API", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
